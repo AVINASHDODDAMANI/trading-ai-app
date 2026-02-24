@@ -2,7 +2,7 @@ async function getSignal() {
   const symbol = document.getElementById("symbol").value;
 
   const response = await fetch(
-    `http://10.133.23.174:8001/analyze?symbol=${symbol}`
+    https://trading-ai-app-7dol.onrender.com/analyze?symbol=" + symbol
   );
 
   const data = await response.json();
