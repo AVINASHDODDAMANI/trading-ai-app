@@ -1,11 +1,16 @@
+import joblib
+import numpy as np
+import yfinance as yf
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import yfinance as yf
 import pandas as pd
 from datetime import datetime
 import pytz
 
 app = FastAPI()
+
+# ✅ Load trained model
+model = joblib.load("model.pkl")
 
 # ✅ Allow frontend connection
 app.add_middleware(
@@ -16,39 +21,31 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ✅ Simple analysis function
+# ================= AI ANALYSIS FUNCTION =================
 def analyze_stock(symbol: str):
-    data = yf.download(symbol, period="3mo")
+    df = yf.download(symbol, period="3mo", interval="1d")
 
-    if data.empty:
-        return {"error": "Invalid stock symbol"}
+    df["Return"] = df["Close"].pct_change()
+    df["MA5"] = df["Close"].rolling(5).mean()
+    df["MA10"] = df["Close"].rolling(10).mean()
+    df = df.dropna()
 
-    # Moving averages
-    data["MA20"] = data["Close"].rolling(20).mean()
-    data["MA50"] = data["Close"].rolling(50).mean()
+    latest = df.iloc[-1]
 
-    last_ma20 = data["MA20"].iloc[-1]
-    last_ma50 = data["MA50"].iloc[-1]
+    X_live = np.array([[latest["Return"], latest["MA5"], latest["MA10"]]])
 
-    if last_ma20 > last_ma50:
-        signal = "BUY"
-        risk = "Medium Risk"
-    else:
-        signal = "SELL"
-        risk = "High Risk"
+    prediction = model.predict(X_live)[0]
 
-    # ✅ Indian time
-    ist = pytz.timezone("Asia/Kolkata")
-    indian_time = datetime.now(ist).strftime("%d-%m-%Y %H:%M:%S")
+    signal = "BUY" if prediction == 1 else "SELL"
 
     return {
-        "stock": symbol,
+        "stock": symbol.upper(),
         "signal": signal,
-        "risk": risk,
-        "date_time_ist": indian_time,
+        "risk": "AI Based",
+        "date_time_ist": datetime.now().strftime("%d-%m-%Y %H:%M:%S")
     }
 
-# ✅ API endpoint
+# ================= API ENDPOINT =================
 @app.get("/analyze")
 def analyze(symbol: str):
     return analyze_stock(symbol)
