@@ -18,6 +18,9 @@ async function getSignal() {
         document.getElementById("result").innerHTML = `
             Stock: ${data.stock}<br>
             Signal: ${data.signal}<br>
+            Current Price: ₹${data.current_price}<br>
+            Buy Near: ₹${data.buy_price}<br>
+            Target: ₹${data.target_price}<br>
             Risk: ${data.risk}<br>
             Date & Time (IST): ${data.date_time_ist}
         `;

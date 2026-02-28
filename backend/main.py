@@ -23,6 +23,10 @@ app.add_middleware(
 
 # ================= AI ANALYSIS FUNCTION =================
 def analyze_stock(symbol: str):
+    symbol = symbol.upper()
+    # Auto add NSE SUFFIX IF MISSING
+    if not symbol.endswith(".NS"):
+        symbol += ".NS"
     df = yf.download(symbol, period="3mo", interval="1d")
 
     df["Return"] = df["Close"].pct_change()
@@ -31,6 +35,11 @@ def analyze_stock(symbol: str):
     df = df.dropna()
 
     latest = df.iloc[-1]
+    current_price = float(latest["Close"])
+    
+    #Simple buy price logic
+    suggested_buy = round(current_price * 0.995, 2)  # 0.5% below current price
+    suggested_sell = round(current_price * 1.01, 2)  # 1% above current price
 
     X_live = np.array([[latest["Return"], latest["MA5"], latest["MA10"]]])
 
@@ -41,6 +50,9 @@ def analyze_stock(symbol: str):
     return {
         "stock": symbol.upper(),
         "signal": signal,
+        "current_price": round(current_price, 2),
+        "buy_price": suggested_buy,
+        "target_price": suggested_sell,
         "risk": "AI Based",
         "date_time_ist": datetime.now().strftime("%d-%m-%Y %H:%M:%S")
     }
