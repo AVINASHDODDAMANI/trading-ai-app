@@ -1,14 +1,29 @@
 async function getSignal() {
-  const symbol = document.getElementById("symbol").value;
+    const symbol = document.getElementById("symbol").value.trim();
 
-  const response = await fetch(
-    https://trading-ai-app-7dol.onrender.com/analyze?symbol=" + symbol
-  );
+    if (!symbol) {
+        document.getElementById("result").innerHTML = "⚠️ Enter stock symbol";
+        return;
+    }
 
-  const data = await response.json();
+    document.getElementById("result").innerHTML = "⏳ Analyzing...";
 
-  document.getElementById("result").innerHTML =
-    `Stock: ${data.stock}<br>
-     Signal: ${data.signal}<br>
-     Risk: ${data.risk}`;
+    try {
+        const response = await fetch(
+            `https://trading-ai-app-7dol.onrender.com/analyze?symbol=${symbol}`
+        );
+
+        const data = await response.json();
+
+        document.getElementById("result").innerHTML = `
+            Stock: ${data.stock}<br>
+            Signal: ${data.signal}<br>
+            Risk: ${data.risk}<br>
+            Date & Time (IST): ${data.date_time_ist}
+        `;
+    } catch (error) {
+        console.error(error);
+        document.getElementById("result").innerHTML =
+            "❌ Failed to connect to server";
+    }
 }
