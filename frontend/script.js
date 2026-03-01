@@ -1,32 +1,45 @@
 async function getSignal() {
-    const symbol = document.getElementById("symbol").value.trim();
+    const inputEl = document.getElementById("symbol");
+    const resultEl = document.getElementById("result");
+
+    let symbol = inputEl.value.trim();
 
     if (!symbol) {
-        document.getElementById("result").innerHTML = "⚠️ Enter stock symbol";
+        resultEl.innerHTML = "⚠️ Enter stock symbol";
         return;
     }
 
-    document.getElementById("result").innerHTML = "⏳ Analyzing...";
+    // ✅ normalize symbol (user can type bel / BEL / bel.ns)
+    symbol = symbol.replace(".NS", "").toUpperCase();
+
+    resultEl.innerHTML = "⏳ Analyzing...";
 
     try {
         const response = await fetch(
             `https://trading-ai-app-7dol.onrender.com/analyze?symbol=${symbol}`
         );
 
+        // ✅ VERY IMPORTANT — handle server errors
+        if (!response.ok) {
+            throw new Error("Server error: " + response.status);
+        }
+
         const data = await response.json();
 
-        document.getElementById("result").innerHTML = `
-            Stock: ${data.stock}<br>
-            Signal: ${data.signal}<br>
-            Current Price: ₹${data.current_price}<br>
-            Buy Near: ₹${data.buy_price}<br>
-            Target: ₹${data.target_price}<br>
-            Risk: ${data.risk}<br>
-            Date & Time (IST): ${data.date_time_ist}
+        // ✅ safe display helper
+        const safe = (val) => (val === null || val === undefined ? "N/A" : val);
+
+        resultEl.innerHTML = `
+            Stock: ${safe(data.stock)}<br>
+            Signal: ${safe(data.signal)}<br>
+            Current Price: ₹${safe(data.current_price)}<br>
+            Buy Near: ₹${safe(data.buy_price)}<br>
+            Target: ₹${safe(data.target_price)}<br>
+            Risk: ${safe(data.risk)}<br>
+            Date & Time (IST): ${safe(data.date_time_ist)}
         `;
     } catch (error) {
-        console.error(error);
-        document.getElementById("result").innerHTML =
-            "❌ Failed to connect to server";
+        console.error("Fetch error:", error);
+        resultEl.innerHTML = "❌ Failed to connect to server";
     }
 }
