@@ -1,6 +1,7 @@
 import matplotlib
 matplotlib.use("Agg")
 
+import os
 import joblib
 import numpy as np
 import yfinance as yf
@@ -13,7 +14,10 @@ import pytz
 app = FastAPI()
 
 # ✅ Load trained model
-model = joblib.load("model.pkl")
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "model.pkl")
+model = joblib.load(MODEL_PATH)
 
 # ✅ Allow frontend connection
 app.add_middleware(
