@@ -5,3 +5,5 @@ yfinance
 numpy
 scikit-learn
 joblib
+matplotlib
+pytz
