@@ -1,3 +1,6 @@
+import matplotlib
+matplotlib.use("Agg")
+
 import joblib
 import numpy as np
 import yfinance as yf
@@ -21,14 +24,41 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ================= SYMBOL FIXER =================
+def fix_symbol(symbol: str):
+    symbol = symbol.upper().strip()
+
+    # If already has suffix, keep it
+    if "." in symbol:
+        return symbol
+
+    # Default to NSE
+    return symbol + ".NS"
+
+
 # ================= AI ANALYSIS FUNCTION =================
 def analyze_stock(symbol: str):
-    symbol = symbol.upper()
-    # Auto add NSE SUFFIX IF MISSING
-    if not symbol.endswith(".NS"):
-        symbol += ".NS"
+    symbol = fix_symbol(symbol)
+
+    # Download data
     df = yf.download(symbol, period="3mo", interval="1d")
 
+    # ✅ Handle no data safely
+    if df.empty:
+        ist = pytz.timezone("Asia/Kolkata")
+        current_time = datetime.now(ist).strftime("%d-%m-%Y %H:%M:%S")
+
+        return {
+            "stock": symbol,
+            "signal": "NO DATA",
+            "current_price": None,
+            "buy_price": None,
+            "target": None,
+            "risk": "Unknown",
+            "date_time_ist": current_time
+        }
+
+    # Indicators
     df["Return"] = df["Close"].pct_change()
     df["MA5"] = df["Close"].rolling(5).mean()
     df["MA10"] = df["Close"].rolling(10).mean()
@@ -36,26 +66,30 @@ def analyze_stock(symbol: str):
 
     latest = df.iloc[-1]
     current_price = float(latest["Close"])
-    
-    #Simple buy price logic
-    suggested_buy = round(current_price * 0.995, 2)  # 0.5% below current price
-    suggested_sell = round(current_price * 1.01, 2)  # 1% above current price
+
+    # Simple buy/sell logic
+    suggested_buy = round(current_price * 0.995, 2)
+    suggested_sell = round(current_price * 1.01, 2)
 
     X_live = np.array([[latest["Return"], latest["MA5"], latest["MA10"]]])
-
     prediction = model.predict(X_live)[0]
 
     signal = "BUY" if prediction == 1 else "SELL"
 
+    # ✅ IST time
+    ist = pytz.timezone("Asia/Kolkata")
+    current_time = datetime.now(ist).strftime("%d-%m-%Y %H:%M:%S")
+
     return {
-        "stock": symbol.upper(),
+        "stock": symbol,
         "signal": signal,
         "current_price": round(current_price, 2),
         "buy_price": suggested_buy,
-        "target_price": suggested_sell,
+        "target": suggested_sell,  # ⚠️ IMPORTANT NAME
         "risk": "AI Based",
-        "date_time_ist": datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+        "date_time_ist": current_time
     }
+
 
 # ================= API ENDPOINT =================
 @app.get("/analyze")
