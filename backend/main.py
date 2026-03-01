@@ -48,7 +48,7 @@ def analyze_stock(symbol: str):
     df = yf.download(symbol, period="3mo", interval="1d")
 
     # ✅ Handle no data safely
-    if df.empty:
+    if df is None or df.empty or "Close" not in df.columns:
         ist = pytz.timezone("Asia/Kolkata")
         current_time = datetime.now(ist).strftime("%d-%m-%Y %H:%M:%S")
 
@@ -67,8 +67,21 @@ def analyze_stock(symbol: str):
     df["MA5"] = df["Close"].rolling(5).mean()
     df["MA10"] = df["Close"].rolling(10).mean()
     df = df.dropna()
+    
+    if df.empty:
+        ist = pytz.timezone("Asia/Kolkata")
+        current_time = datetime.now(ist).strftime("%d-%m-%Y %H:%M:%S")
 
-    latest = df.iloc[-1]
+        return {
+            "stock": symbol,
+            "signal": "INSUFFICIENT DATA",
+            "current_price": None,
+            "buy_price": None,
+            "target": None,
+            "risk": "Unknown",
+            "date_time_ist": current_time
+        }
+    latest = df.tail(1).iloc[0]
     current_price = float(latest["Close"])
 
     # Simple buy/sell logic
