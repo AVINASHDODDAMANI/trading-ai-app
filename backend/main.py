@@ -18,6 +18,9 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "model.pkl")
 model = joblib.load(MODEL_PATH)
 
+PRICE_MODEL_PATH = os.path.join(BASE_DIR, "price_model.pkl")
+price_model = joblib.load(PRICE_MODEL_PATH)
+
 # ================= CORS =================
 app.add_middleware(
     CORSMiddleware,
@@ -67,6 +70,8 @@ def analyze_stock(symbol: str):
         df["Return"] = df["Close"].pct_change()
         df["MA5"] = df["Close"].rolling(5).mean()
         df["MA10"] = df["Close"].rolling(10).mean()
+        df["Volatility"] = df["Close"].rolling(10).std()
+        df["Close"].rolling(10).std()
         df = df.dropna()
 
         # --- check again ---
@@ -98,20 +103,38 @@ def analyze_stock(symbol: str):
         )
 
         # --- AI prediction ---
-        X_live = np.array(
-            [[latest["Return"], latest["MA5"], latest["MA10"]]]
+        #X_live = np.array(
+        #    [[latest["Return"], latest["MA5"], latest["MA10"]]]
+        #)
+
+        #prediction = model.predict(X_live)[0]
+        #signal = "BUY" if prediction == 1 else "SELL"
+        
+        X_live_price = np.array(
+            [[latest["Return"], latest["MA5"], latest["MA10"], latest["Volatility"]]]
         )
-
-        prediction = model.predict(X_live)[0]
-        signal = "BUY" if prediction == 1 else "SELL"
-
+        
+        predicted_price = float(price_model.predict(X_live_price)[0])
+        current_price = float(latest["Close"])
+        
+        #direction logic
+        signal = "BUY" if predicted_price > current_price else "SELL"
+        
+        #SMart levels
+        buy_price = round(predicted_price * 0.995, 2)
+        target_price = round(predicted_price, 2)
+        expected_return = round((predicted_price - current_price) / current_price * 100, 2) if current_price else None
+        risk = "Low" if expected_return and expected_return < 2 else "High"
+        
         return {
             "stock": symbol,
             "signal": signal,
-            "current_price": current_price,
-            "buy_price": suggested_buy,
-            "target_price": suggested_sell,
-            "risk": "AI Based",
+            "current_price": round(current_price, 2),
+            "predicted_price": round(predicted_price, 2),
+            "expected_return_percent": expected_return,
+            "buy_price": buy_price,
+            "target_price": target_price,
+            "risk": "AI Advanced " + risk,
             "date_time_ist": current_time,
         }
 
